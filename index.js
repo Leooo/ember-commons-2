@@ -10,5 +10,8 @@ module.exports = {
     // registry:
     //
     //     target.registry.add('js', myPreprocessor);
+  },
+  isDevelopingAddon: function () {
+    return true;
   }
 };
