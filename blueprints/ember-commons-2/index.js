@@ -8,20 +8,13 @@ var path = require('path');
 //var myModel = require('../../node_modules/ember-commons/addon/models/premise');
 
 module.exports = {
+  afterInstall: function(options, local) {
+    console.log('beforeInstall options', Object.keys(options), options);
+  },
   normalizeEntityName: function() {
     // this prevents an error when the entityName is
     // not specified (since that doesn't actually matter
     // to us
-  },
-  fileMapTokens: function() {
-    return {
-      __root__: function(options) {
-        return '/test1';
-      },
-      __modelname__: function(options) {
-        return 'premise'
-      }
-    };
   },
   filesPath: function(/* options */) {
     return path.join(this.path, 'files').replace(
@@ -58,9 +51,24 @@ module.exports = {
      return path.resolve(filesPath, file);
    },
    buildFileInfo: function(intoDir, templateVariables, file) {
-    let base = this._super.apply(this, arguments);
+    /*let base = this._super.apply(this, arguments);
     console.log('arguments', intoDir, templateVariables, file);
     console.log('base', base);
+    console.log('templateVariablesdebug', templateVariables);
+    let baseName = templateVariables.dasherizedPackageName;
+    console.log('baseName', baseName);
+    let filePath = base.inputPath;
+    console.log('filePath0', filePath, filePath.indexOf('ember-commons/'));
+    filePath = filePath.substr(filePath.indexOf('ember-commons/'), filePath.length);
+    filePath = 'oam/' + filePath.replace('ember-commons/addon/', 'commons/');
+    console.log('filePath', filePath);*/
+    let baseName = templateVariables.dasherizedPackageName;
+    let base = this._super.apply(this, arguments);
+    let outputPath = base.outputPath;
+    console.log('outputPath0', outputPath);
+    outputPath = outputPath.replace(baseName, baseName + '/commons');
+    console.log('outputPath', outputPath);
+    base.outputPath = outputPath;
     return base;
   },
   // afterInstall: function(options) {

@@ -10,6 +10,7 @@ module.exports = {
     // registry:
     //
     //     target.registry.add('js', myPreprocessor);
+    this._super.included(app);
   },
   isDevelopingAddon: function () {
     return true;
