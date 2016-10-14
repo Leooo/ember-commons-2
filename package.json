@@ -39,7 +39,8 @@
     "ember-resolver": "^2.0.3",
     "ember-commons": "ConnectedHomes/ember-commons.git#6.1.1",
     "loader.js": "^4.0.1",
-    "walk-sync": "0.3.0"
+    "walk-sync": "0.3.0",
+    "fs-walk": "0.0.1"
   },
   "keywords": [
     "ember-addon"
