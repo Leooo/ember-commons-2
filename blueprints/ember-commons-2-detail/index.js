@@ -3,16 +3,25 @@
 var walkSync = require('../../node_modules/walk-sync');
 var walk = require('fs-walk');
 var path = require('path');
+var FileInfo = require ('../../lib/models/file-info');
+// var FileInfo = require('ember-cli/lib/models/file-info');
+var Promise = require('ember-cli/lib/ext/promise');
+var sequence = require('ember-cli/lib/utilities/sequence');
 
 // use with: ember g ember-commons-2-detail --typeName='models' --objectName='direct-debit'
 module.exports = {
+  install: function(options) {
+    console.log('install');
+    return this._super.apply(this, arguments);
+  },
   normalizeEntityName: function(entityName) {
-    console.log('normalizeEntityName');
+    // console.log('normalizeEntityName');
     // this prevents an error when the entityName is
   },
-  fileMapTokens: function() {
-    let typeName = this.typeName,
-    objectName = this.objectName;
+  fileMapTokens: function(options) {
+    let typeName = options.locals.typeName,
+    objectName = options.locals.objectName;
+    console.log('fileMapTokens', objectName);
     return {
       __root__: function(options) {
         return '/commons';
@@ -26,10 +35,12 @@ module.exports = {
     };
   },
   filesPath: function(options) {
-    // console.log('options', options ? options : '');
-    // first run from hasPathToken
+    console.log('filesPath');
+    // options is null for first run from hasPathToken
     this.typeName = options ? options.taskOptions.typeName : '';
     this.objectName = options ? options.taskOptions.objectName : '';
+    this.rootFolder = options ? options.taskOptions.rootFolder : '';
+    this.keepConflictingExistingFiles = options ? options.taskOptions.keepConflictingExistingFiles : '';
     let filesPath = path.join(this.path, 'files').replace(
       'blueprints/ember-commons-2-detail/files',
       `node_modules/ember-commons/addon/${this.typeName}/${this.objectName}`
@@ -41,64 +52,134 @@ module.exports = {
     // https://ember-cli.com/api/files/lib_models_blueprint.js.html#l223
     if (this._files && this.typeName.length) { return this._files; }
     var filesPath = this.filesPath(this.options);
-    /*filesPath = filesPath.replace(
-      'blueprints/ember-commons-2/files',
-      'node_modules/ember-commons/addon/models'
-    );
-    console.log('fileName:');
-    console.log(filesPath);*/
-    // this._files = walkSync(filesPath, { directories: false });
+    // console.log('files', this.options.taskOptions.objectName, filesPath);
     let _files = [];
     walk.walkSync(filesPath, function(basedir, filename, stat) {
       _files.push(filename);
     });
     this._files = _files;
-    // this._files = [filesPath];
-    // console.log('filesPath', filesPath);
     console.log('this._files', this._files);
-    // console.log('_files', this._files);
     return this._files;
   },
+  locals: function(options) {
+    // console.log('locals');
+    return options.taskOptions;
+  },
   _process: function(options, beforeHook, process, afterHook) {
+    console.log('_process', options.taskOptions);
     return this._super.apply(this, arguments);
   },
-  locals: function() {console.log('locals');},
-  _locals: function(options) {
-    var packageName = options.project.name();
-    var moduleName = options.entity && options.entity.name || packageName;
-    var sanitizedModuleName = moduleName.replace(/\//g, '-');
-    var fileMapVariables = this._generateFileMapVariables(moduleName, undefined, options);
-    var fileMap = this.generateFileMap(fileMapVariables);
-    console.log('_process',fileMap);
-    console.log('_locals0', moduleName);
-    return this._super.apply(this,arguments).then(function(res){
-      console.log('_locals', res);
-      return res;
-    });
-  },
-  beforeInstall: function() {
-    console.log('beforeInstall');
+  beforeInstall: function(options) {
+    console.log('beforeInstall', options.taskOptions);
   },
   buildFileInfo: function(intoDir, templateVariables, file) {
-  console.log('buildFileInfo');
-   /*let base = this._super.apply(this, arguments);
-   console.log('arguments', intoDir, templateVariables, file);
-   console.log('base', base);
-   console.log('templateVariablesdebug', templateVariables);
-   let baseName = templateVariables.dasherizedPackageName;
-   console.log('baseName', baseName);
-   let filePath = base.inputPath;
-   console.log('filePath0', filePath, filePath.indexOf('ember-commons/'));
-   filePath = filePath.substr(filePath.indexOf('ember-commons/'), filePath.length);
-   filePath = 'oam/' + filePath.replace('ember-commons/addon/', 'commons/');
-   console.log('filePath', filePath);*/
-   let baseName = templateVariables.dasherizedPackageName;
-   let base = this._super.apply(this, arguments);
-   let outputPath = base.outputPath;
-   console.log('outputPath0', outputPath);
-   outputPath = outputPath.replace(baseName, `${baseName}/commons/${this.typeName}/`);
-   console.log('outputPath', outputPath);
-   base.outputPath = outputPath;
-   return base;
- },
+    console.log('buildFileInfo', templateVariables);
+    let mappedPath = this.mapFile(file, templateVariables);
+    mappedPath = `${templateVariables.rootFolder}/${templateVariables.typeName}/${templateVariables.objectName}/${mappedPath}`
+    console.log('mappedPath', mappedPath);
+    let base = new FileInfo({
+      action: 'write',
+      outputBasePath: path.normalize(intoDir),
+      outputPath: path.join(intoDir, mappedPath),
+      displayPath: path.normalize(mappedPath),
+      inputPath: this.srcPath(file),
+      templateVariables: templateVariables,
+      ui: this.ui
+    });
+    // let base = this._super.apply(this, arguments);
+    let baseName = templateVariables.dasherizedPackageName;
+    console.log('base', base);
+    let outputPath = base.outputPath;
+    console.log('outputPath0', outputPath);
+    /*outputPath = outputPath.replace(
+      baseName,
+      `${baseName}/${templateVariables.rootFolder}/${templateVariables.typeName}/${templateVariables.objectName}`
+    );*/
+    console.log('outputPath', outputPath);
+    base.outputPath = outputPath;
+    base.skipConflict = templateVariables.keepConflictingExistingFiles;
+    //// console.log('base', base);
+    return base;
+  },
+  /*processFiles: function(intoDir, templateVariables) {
+    console.log('processFiles', templateVariables.targetFiles);
+    let res = this._super.apply(this, arguments);
+    console.log('processFiles 2', res);
+    return res.then((res2) => {
+      console.log('processFiles 3', res2);
+      return res2;
+    }, (err) => {
+      console.log('error', err);
+    });
+  },*/
+  processFiles: function(intoDir, templateVariables) {
+    var files = this._getFilesForInstall(templateVariables.targetFiles);
+    var fileInfos = this._getFileInfos(files, intoDir, templateVariables);
+    this._checkForNoMatch(fileInfos, templateVariables.rawArgs);
+
+    this._ignoreUpdateFiles();
+    console.log('processFiles 0');
+    return Promise.filter(fileInfos, isValidFile).
+      map(prepareConfirm).
+      then(finishProcessingForInstall);
+  },
+  _getFilesForInstall() {
+    let getf = this._super.apply(this, arguments);
+    console.log('_getFilesForInstall', getf);
+    return getf;
+  },
+  _getFileInfos(files, intoDir, templateVariables) {
+    console.log('_getFileInfos0', files, intoDir, templateVariables);
+    let getf = files.map(this.buildFileInfo.bind(this, intoDir, templateVariables));
+    console.log('_getFileInfos', getf);
+    return getf;
+  },
+  _writeFile: function(info) {
+    console.log('writeFile', info.rendered, info.inputPath);
+    return this._super.apply(this,arguments);
+  },
 };
+
+function prepareConfirm(info) {
+  console.log('prepareConfirm');
+  return info.checkForConflict().then(function(resolution) {
+    console.log('resolution');
+    info.resolution = resolution;
+    return info;
+  });
+}
+
+/*function finishProcessingForInstall(infos) {
+  console.log('finishProcessingForInstall');
+  let sup = this._super.apply(this, arguments);
+  return sup.then((res) => {
+    console.log('finishProcessingForInstall res', res);
+    return res;
+  });
+}*/
+
+function finishProcessingForInstall(infos) {
+  console.log('finishProcessingForInstall');
+  infos.forEach(markIdenticalToBeSkipped);
+
+  var infosNeedingConfirmation = infos.reduce(gatherConfirmationMessages, []);
+
+  return sequence(infosNeedingConfirmation).returns(infos);
+}
+
+function isValidFile(fileInfo) {
+  return Promise.resolve(true);
+}
+
+function markIdenticalToBeSkipped(info) {
+  if (info.resolution === 'identical') {
+    info.action = 'skip';
+  }
+}
+
+function gatherConfirmationMessages(collection, info) {
+  if (info.resolution === 'confirm') {
+    collection.push(info.confirmOverwriteTask());
+  }
+  return collection;
+}

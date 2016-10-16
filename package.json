@@ -40,7 +40,10 @@
     "ember-commons": "ConnectedHomes/ember-commons.git#6.1.1",
     "loader.js": "^4.0.1",
     "walk-sync": "0.3.0",
-    "fs-walk": "0.0.1"
+    "fs-walk": "0.0.1",
+    "ember-cli-lodash-subset": "^1.0.11",
+    "eslint": "^3.3.0",
+    "ember-cli-eslint": "^1.6.0"
   },
   "keywords": [
     "ember-addon"
