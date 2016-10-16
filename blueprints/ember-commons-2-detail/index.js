@@ -12,10 +12,11 @@ module.exports = {
   },
   fileMapTokens: function() {
     let typeName = this.typeName,
-    objectName = this.objectName;
+    objectName = this.objectName,
+    rootFolder = this.rootFolder;
     return {
       __root__: function(options) {
-        return '/commons';
+        return rootFolder;
       },
       __typeName__: function(options) {
         return typeName;
@@ -30,6 +31,7 @@ module.exports = {
     // first run from hasPathToken
     this.typeName = options ? options.taskOptions.typeName : '';
     this.objectName = options ? options.taskOptions.objectName : '';
+    this.rootFolder = options ? options.taskOptions.rootFolder : '';
     let filesPath = path.join(this.path, 'files').replace(
       'blueprints/ember-commons-2-detail/files',
       `node_modules/ember-commons/addon/${this.typeName}/${this.objectName}`
@@ -96,7 +98,7 @@ module.exports = {
    let base = this._super.apply(this, arguments);
    let outputPath = base.outputPath;
    console.log('outputPath0', outputPath);
-   outputPath = outputPath.replace(baseName, `${baseName}/commons/${this.typeName}/`);
+   outputPath = outputPath.replace(baseName, `${baseName}/${this.rootFolder}/${this.typeName}/${this.objectName}/`);
    console.log('outputPath', outputPath);
    base.outputPath = outputPath;
    return base;

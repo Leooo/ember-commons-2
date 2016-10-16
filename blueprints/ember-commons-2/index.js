@@ -23,15 +23,20 @@ module.exports = {
     let promiseArray= [];
     Object.keys(importFromCommons).forEach((typeName) => {
       importFromCommons[typeName].forEach((objectName) => {
-        let promise = new Promise(function(resolve) {
-          let blueprintDetail = Blueprint.load(`${path}-detail`);
-          let options2 = _.cloneDeep(options);
-          options2.taskOptions = {};
-          options2.taskOptions.typeName = typeName;
-          options2.taskOptions.objectName = objectName;
-          resolve(blueprintDetail.install(options2));
+        ['commons', 'app'].forEach((rootFolder) => {
+          let promise = new Promise(function(resolve) {
+            let blueprintDetail = Blueprint.load(`${path}-detail`);
+            let options2 = _.cloneDeep(options);
+            options2.taskOptions = {
+              typeName,
+              objectName,
+              keepConflictingExistingFiles: (rootFolder === 'app'),
+              rootFolder
+            };
+            resolve(blueprintDetail.install(options2));
+          });
+          promiseArray.push(promise);
         });
-        promiseArray.push(promise);
       });
     });
     let promise = promiseArray[0];
